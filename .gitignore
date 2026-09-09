@@ -1,0 +1,11 @@
+# Terraform
+setup/terraform/.terraform/
+setup/terraform/.terraform.lock.hcl
+setup/terraform/terraform.tfstate
+setup/terraform/terraform.tfstate.*
+terraform
+terraform.zip
+
+# Local environment
+.env
+.env.*
