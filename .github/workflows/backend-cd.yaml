@@ -1,0 +1,52 @@
+name: Backend Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'starter/backend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build backend Docker image
+        working-directory: starter/backend
+        run: |
+          docker build \
+            -t 356361756350.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }} \
+            .
+
+      - name: Push backend Docker image
+        run: |
+          docker push \
+            356361756350.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name cluster
+
+      - name: Deploy backend to EKS
+        working-directory: starter
+        run: |
+          sed -i "s|image: .*backend:.*|image: 356361756350.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }}|" backend/k8s/deployment.yaml
+          kubectl apply -k backend/k8s
+          kubectl rollout status deployment/backend
